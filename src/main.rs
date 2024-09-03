@@ -17,12 +17,4 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-
-    let file = File::open(&args.file).expect("Could not open file");
-    let reader = BufReader::new(file);
-
-    let img = image::open(reader).expect("Could not read image");
-
-    let dimensions = img.dimensions();
-    let file_size = fs::metadata(&args.file).expect("Could not open file");
 }
