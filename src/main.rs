@@ -1,51 +1,115 @@
 use clap::Parser;
-use exif::Reader;
+use exif::{Field, Reader, Tag, Value};
 use image::GenericImageView;
+use prettytable::{format, row, Table};
 use std::{
     fs::{self, File},
     io::BufReader,
     path::Path,
 };
 
-/*
-Simple CLI to extract metadata from image file
-*/
-
+/// Simple CLI to extract metadata from image files
 #[derive(Parser)]
 struct Args {
     #[clap(short, long)]
     file: String,
+
+    #[clap(short, long)]
+    show_exif: bool,
 }
 
 fn main() {
-    let args = Args::parse();
+    let ascii_art = r#"
+ ___ ____   ____ 
+|_ _|  _ \ / ___|
+ | || |_) | |    
+ | ||  __/| |___ 
+|___|_|    \____|
+"#;
 
-    // let file = File::open(&args.file).expect("Could not open file");
+    println!("{}", ascii_art);
+    println!("Image Processing CLI (IPC) written in Rust 🦀");
+
+    let args = Args::parse();
     let path = Path::new(&args.file);
 
     let img = image::open(path).expect("Could not read image");
-
     let dimensions = img.dimensions();
-    let file_size = fs::metadata(&args.file).expect("Could not open file").len();
+    let file_size = fs::metadata(&args.file)
+        .expect("Could not get file metadata")
+        .len() as f64
+        / 1_048_576.0; // Convert bytes to MB
 
-    println!("File: {}", args.file);
-    println!("Dimensions: {}x{}", dimensions.0, dimensions.1);
-    println!("File size: {}", file_size);
+    // Print image and file details in table format
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    table.set_titles(row!["Property", "Value"]);
+    table.add_row(row!["File", args.file]);
+    table.add_row(row![
+        "Dimensions",
+        format!("{}x{}", dimensions.0, dimensions.1)
+    ]);
+    table.add_row(row!["File Size", format!("{:.2} MB", file_size)]);
+    println!();
+    println!("Image metadata");
+    table.printstd();
 
-    // Extract EXIF data
-    let file = File::open(&args.file).expect("Could not open file");
+    if args.show_exif {
+        // Extract and display EXIF data
+        let exif_data = extract_exif_data(&args.file);
+        if let Some(exif_table) = exif_data {
+            println!();
+            println!("Image EXIF data");
+            exif_table.printstd();
+        } else {
+            println!("No EXIF data found or could not be read.");
+        }
+    }
+}
+
+/// Extracts EXIF data from the image file and returns it in a table format
+fn extract_exif_data(file_path: &str) -> Option<Table> {
+    let file = File::open(file_path).expect("Could not open file");
     let exif_reader = Reader::new();
     let exif = exif_reader
         .read_from_container(&mut BufReader::new(file))
-        .expect("Could not read EXIF data");
+        .ok()?;
+
+    let mut exif_table = Table::new();
+    exif_table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    exif_table.set_titles(row!["Tag", "Value"]);
 
     for field in exif.fields() {
-        match field.value {
-            exif::Value::Ascii(ref v) => println!("{}: {:?}", field.tag, v),
-            exif::Value::Short(ref v) => println!("{}: {:?}", field.tag, v),
-            exif::Value::Long(ref v) => println!("{}: {:?}", field.tag, v),
-            exif::Value::Rational(ref v) => println!("{}: {:?}", field.tag, v),
-            _ => continue,
-        }
+        let value = format_exif_value(field);
+        exif_table.add_row(row![field.tag.to_string(), value]);
+    }
+
+    Some(exif_table)
+}
+
+/// Formats the EXIF value for display
+fn format_exif_value(field: &Field) -> String {
+    match &field.value {
+        Value::Ascii(ref v) => v
+            .iter()
+            .map(|s| std::str::from_utf8(s).unwrap_or("").to_string())
+            .collect::<Vec<String>>()
+            .join(", "),
+        Value::Short(ref v) => v
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join(", "),
+        Value::Long(ref v) => v
+            .iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<String>>()
+            .join(", "),
+        Value::Rational(ref v) => v
+            .iter()
+            .map(|r| format!("{}/{}", r.num, r.denom))
+            .collect::<Vec<String>>()
+            .join(", "),
+        _ => String::from("Unsupported EXIF value type"),
     }
 }

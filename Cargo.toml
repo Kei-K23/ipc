@@ -7,4 +7,4 @@ edition = "2021"
 clap = { version = "4.5.16", features = ["derive"] }
 image = "0.25.2"
 kamadak-exif = "0.5.5"
-
+prettytable-rs = "^0.10"
