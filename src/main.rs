@@ -1,6 +1,7 @@
 use clap::Parser;
 use exif::{Field, Reader, Tag, Value};
 use image::GenericImageView;
+use inquire::{InquireError, Select};
 use prettytable::{format, row, Table};
 use std::{
     fs::{self, File},
@@ -13,12 +14,9 @@ use std::{
 struct Args {
     #[clap(short, long)]
     file: String,
-
-    #[clap(short, long)]
-    show_exif: bool,
 }
 
-fn main() {
+fn main() -> Result<(), InquireError> {
     let ascii_art = r#"
  ___ ____   ____ 
 |_ _|  _ \ / ___|
@@ -30,7 +28,15 @@ fn main() {
     println!("{}", ascii_art);
     println!("Image Processing CLI (IPC) written in Rust 🦀");
 
-    let args = Args::parse();
+    // Step 1: Interactive selection
+    let options = vec![
+        "Show Dimensions and File Size",
+        "Show EXIF Data",
+        "Show Both",
+    ];
+    let user_choice = Select::new("Choose an option:", options.clone()).prompt()?;
+
+    let args: Args = Args::parse();
     let path = Path::new(&args.file);
 
     let img = image::open(path).expect("Could not read image");
@@ -51,10 +57,13 @@ fn main() {
     ]);
     table.add_row(row!["File Size", format!("{:.2} MB", file_size)]);
     println!();
-    println!("Image metadata");
-    table.printstd();
 
-    if args.show_exif {
+    if user_choice == options[0] || user_choice == options[2] {
+        println!("Image metadata");
+        table.printstd();
+    }
+
+    if user_choice == options[1] || user_choice == options[2] {
         // Extract and display EXIF data
         let exif_data = extract_exif_data(&args.file);
         if let Some(exif_table) = exif_data {
@@ -65,6 +74,8 @@ fn main() {
             println!("No EXIF data found or could not be read.");
         }
     }
+
+    Ok(())
 }
 
 /// Extracts EXIF data from the image file and returns it in a table format
