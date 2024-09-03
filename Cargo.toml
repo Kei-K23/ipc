@@ -1,9 +1,10 @@
 [package]
-name = "image_metadata_extractor"
+name = "image_processing_cli"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
-exif = "0.0.1"
 image = "0.25.2"
+kamadak-exif = "0.5.5"
+
