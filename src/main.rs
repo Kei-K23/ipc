@@ -27,51 +27,63 @@ fn main() -> Result<(), InquireError> {
 
     println!("{}", ascii_art);
     println!("Image Processing CLI (IPC) written in Rust 🦀");
-
-    // Step 1: Interactive selection
-    let options = vec![
-        "Show Dimensions and File Size",
-        "Show EXIF Data",
-        "Show Both",
-    ];
-    let user_choice = Select::new("Choose an option:", options.clone()).prompt()?;
-
-    let args: Args = Args::parse();
-    let path = Path::new(&args.file);
-
-    let img = image::open(path).expect("Could not read image");
-    let dimensions = img.dimensions();
-    let file_size = fs::metadata(&args.file)
-        .expect("Could not get file metadata")
-        .len() as f64
-        / 1_048_576.0; // Convert bytes to MB
-
-    // Print image and file details in table format
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-    table.set_titles(row!["Property", "Value"]);
-    table.add_row(row!["File", args.file]);
-    table.add_row(row![
-        "Dimensions",
-        format!("{}x{}", dimensions.0, dimensions.1)
-    ]);
-    table.add_row(row!["File Size", format!("{:.2} MB", file_size)]);
     println!();
 
-    if user_choice == options[0] || user_choice == options[2] {
-        println!("Image metadata");
-        table.printstd();
+    // Step 1: Interactive selection
+    let main_options = vec!["Image processing", "Get image information data"];
+    let user_choice_main = Select::new("Choose an option:", main_options.clone()).prompt()?;
+
+    if user_choice_main == main_options[0] {
+        println!("Image processing");
     }
 
-    if user_choice == options[1] || user_choice == options[2] {
-        // Extract and display EXIF data
-        let exif_data = extract_exif_data(&args.file);
-        if let Some(exif_table) = exif_data {
-            println!();
-            println!("Image EXIF data");
-            exif_table.printstd();
-        } else {
-            println!("No EXIF data found or could not be read.");
+    if user_choice_main == main_options[1] {
+        // Step 1: Interactive selection
+        let info_options = vec![
+            "Show Dimensions and File Size",
+            "Show EXIF Data",
+            "Show Both",
+        ];
+        let user_choice =
+            Select::new("Choose information you want:", info_options.clone()).prompt()?;
+
+        let args: Args = Args::parse();
+        let path = Path::new(&args.file);
+
+        let img = image::open(path).expect("Could not read image");
+        let dimensions = img.dimensions();
+        let file_size = fs::metadata(&args.file)
+            .expect("Could not get file metadata")
+            .len() as f64
+            / 1_048_576.0; // Convert bytes to MB
+
+        // Print image and file details in table format
+        let mut table = Table::new();
+        table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+        table.set_titles(row!["Property", "Value"]);
+        table.add_row(row!["File", args.file]);
+        table.add_row(row![
+            "Dimensions",
+            format!("{}x{}", dimensions.0, dimensions.1)
+        ]);
+        table.add_row(row!["File Size", format!("{:.2} MB", file_size)]);
+        println!();
+
+        if user_choice == info_options[0] || user_choice == info_options[2] {
+            println!("Image metadata");
+            table.printstd();
+        }
+
+        if user_choice == info_options[1] || user_choice == info_options[2] {
+            // Extract and display EXIF data
+            let exif_data = extract_exif_data(&args.file);
+            if let Some(exif_table) = exif_data {
+                println!();
+                println!("Image EXIF data");
+                exif_table.printstd();
+            } else {
+                println!("No EXIF data found or could not be read.");
+            }
         }
     }
 
